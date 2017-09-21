@@ -1,93 +1,252 @@
 <?php
-//操作svn类
-class svn {
-    private $root = '/var/www/'; //项目所在的根目录
-    public  $project_name = ['1' => '微云服'];
-    private $project_dir = ['1' => 'vipyunfu'];
-    private $dir; //所在操作目录
-    public  $status_msg = '无'; //
-    public  $error = []; //错误或提示
-    private $users = ['wuzeguo', 'wangyineng']; //允许进入的用户
-    private $do_type = [1=>'update', 2=>'add', 3=>'commit'];
-    private $do; //操作类型
-    private $bash; //生成的svn语句
-
-    public function __construct() {
+  /**
+   *
+   * This class for execute the external program of svn
+   * 
+   * @auth Seven Yang <qineer@gmail.com>
+   *
+   */
+class SvnPeer
+{
+	const SVN_USERNAME = 'wuzeguo';
+	const SVN_PASSWORD = 'wuzeguo';
+	const SVN_CONFIG_DIR = '/var/www/tmp/';
+ 
+  /**
+   * List directory entries in the repository
+   *
+   * @param string a specific project repository path
+   * @return bool true, if validated successfully, otherwise false
+   */
+  static public function ls($repository)
+  {
+    $command = "svn ls " . $repository;
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode("<br>", $output);
+    if (strpos($output, 'non-existent in that revision')) {
+      return false;
     }
-
-    public function setUsers(array $users) {
-        $this->users = $users;
+ 
+    return "<br>" . $command . "<br>" . $output;
+  }
+ 
+  /**
+   * Duplicate something in working copy or repository, remembering history
+   * 
+   * @param $src
+   * @param $dst
+   * @param $comment string specify log message
+   * @return bool true, if copy successfully, otherwise return the error message
+   *
+   * @todo comment need addslashes for svn commit
+   */
+  static public function copy($src, $dst, $comment)
+  {
+    $command = "svn cp $src $dst -m '$comment'";
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode("<br>", $output);
+ 
+    if (strpos($output, 'Committed revision')) {
+      return true;
     }
-
-    public function getUsers() {
-        return $this->users;
+ 
+    return "<br>" . $command . "<br>" . $output;
+  }
+ 
+  /**
+   * Remove files and directories from version control
+   * 
+   * @param $url
+   * @return bool true, if delete successfully, otherwise return the error message
+   *
+   * @todo comment need addslashes for svn commit
+   */
+  static public function delete($url, $comment)
+  {
+    $command = "svn del $url -m '$comment'";
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode('<br>', $output);
+    if (strpos($output, 'Committed revision')) {
+      return true;
+    } 
+ 
+    return "<br>" . $command . "<br>" . $output;
+  }
+ 
+  /**
+   * Move and/or rename something in working copy or repository
+   * 
+   * @param $src string trunk path
+   * @param $dst string new branch path
+   * @param $comment string specify log message
+   * @return bool true, if move successfully, otherwise return the error message
+   *
+   * @todo comment need addslashes for svn commit
+   */
+  static public function move($src, $dst, $comment)
+  {
+    $command = "svn mv $src $dst -m '$comment'";
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode('<br>', $output);
+ 
+    if (strpos($output, 'Committed revision')) {
+      return true;
     }
-
-    public function setError(array $error) {
-        $this->error = $error;
+ 
+    return "<br>" . $command . "<br>" . $output;
+  }
+ 
+  /**
+   * Create a new directory under version control
+   *
+   * @param $url string 
+   * @param $comment string the svn message
+   * @return bool true, if create successfully, otherwise return the error message
+   *
+   * @todo comment need addslashes for svn commit
+   */
+  static public function mkdir($url, $comment)
+  {
+    $command = "svn mkdir $url -m '$comment'";
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode('<br>', $output);
+ 
+    if (strpos($output, 'Committed revision')) {
+      return true;
     }
-
-    public function getError() {
-        return $this->error;
+ 
+    return "<br>" . $command . "<br>" . $output;
+  }
+ 
+  static public function diff($pathA, $pathB)
+  {
+    $output = SvnPeer::runCmd("svn diff $pathA $pathB");
+    return implode('<br>', $output);
+  }
+ 
+  static public function checkout($url, $dir)
+  {
+    $command = "cd $dir && svn co $url";
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode('<br>', $output);
+    if (strstr($output, 'Checked out revision')) {
+      return true;
     }
-
-    //验证合法性
-    public function checkData()
-    {
-        $this->status_msg = '失败';
-        //用户合法
-        $this->do = $this->do_type[$_POST['type']];
-        if (!in_array($_POST['passport'], $this->users)) {
-            $this->error[] = '用户不合法';
-        }elseif (!$this->do) {
-            $this->error[] = '请选择正确的操作类型';
-        }elseif ($thsi->do== 'commit' && !$_POST['dir']) {
-            $this->error[] = '请填写目录';
-        } else {
-            $this->dir = $this->root . $this->project_dir[$_POST['root']] . '/' . trim($_POST['dir']);
-            if (!is_dir($this->dir) && !file_exists($this->dir)) $this->error[] = '目录或文件不存在，请重试'; 
-        }
+ 
+    return "<br>" . $command . "<br>" . $output;
+  }
+ 
+ 
+  static public function update($path)
+  {
+    $command = "cd $path && svn up";
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode('<br>', $output);
+var_dump($output);die;
+ 
+    preg_match_all("/[0-9]+/", $output, $ret);
+    if (!$ret[0][0]){
+      return "<br>" . $command . "<br>" . $output;
     }
-
-    //构造svn语句
-    private function createSVN() 
-    {
-        switch ($this->do) {
-        case  'update': 
-            $this->bash = 'svn update ' . $this->dir;
-            break;
-        case 'add':
-            $this->bash = 'svn add ' . $this->dir;
-            break;
-        case 'commit':
-            $msg = trim($_POST['message']);
-            $msg = $msg ? iconv("UTF-8", "GB2312//IGNORE", $msg) : 'fix';
-            $msg = $msg . '  --' . $_POST['passport'];
-            $this->bash = 'svn commit -m "' . $msg . '"  ' .  $this->dir;
-            break;
-        }
+ 
+    return $ret[0][0];
+  }
+ 
+  static public function merge($revision, $url, $dir)
+  {
+    $command = "cd $dir && svn merge -r1:$revision $url";
+    $output  = implode('<br>', SvnPeer::runCmd($command));
+    if (strstr($output, 'Text conflicts')) {
+      return 'Command: ' . $command .'<br>'. $output;
     }
-
-    //操作svn
-    public function doSVN() {
-        $this->checkData();
-
-        if (empty($this->error)) {
-
-            $this->createSVN();
-            //echo $this->bash;die;
-
-	    putenv('LANG=C.UTF-8');    
-	    exec("$this->bash", $out,$status);
-	    var_dump($status);
-            var_dump($out);
-
-            if ($status == 0) {
-                $this->status_msg = '成功';
-            }
-
-            $this->error = $out;
-        }
+ 
+    return true;
+  }
+ 
+  static public function commit($dir, $comment)
+  {
+    $command = "cd $dir && svn commit -m'$comment'";
+    $output  = implode('<br>', SvnPeer::runCmd($command));
+ 
+    if (strpos($output, 'Committed revision') || empty($output)) {
+      return true;
     }
-
+     
+    return $output;
+  }
+ 
+  static public function getStatus($dir)
+  {
+    $command = "cd $dir && svn st";
+    return SvnPeer::runCmd($command);
+  }
+ 
+  static public function hasConflict($dir)
+  {
+    $output = SvnPeer::getStatus($dir);
+    foreach ($output as $line){
+      if ('C' == substr(trim($line), 0, 1) || ('!' == substr(trim($line), 0, 1))){
+        return true;
+      }
+    }
+ 
+    return false;
+  }
+ 
+  /**
+   * Show the log messages for a set of path with XML
+   *
+   * @param path string 
+   * @return log message string 
+   */
+  static public function getLog($path)
+  {
+    $command = "svn log $path --xml";
+    $output  = SvnPeer::runCmd($command);
+    return implode('', $output);
+  }
+ 
+  static public function getPathRevision($path)
+  {
+    $command = "svn info $path --xml";
+    $output  = SvnPeer::runCmd($command);
+    $string  = implode('', $output);
+    $xml     = new SimpleXMLElement($string);
+    foreach ($xml->entry[0]->attributes() as $key=>$value){
+      if ('revision' == $key) {
+        return $value;
+      }
+    }
+  }
+ 
+  static public function getHeadRevision($path)
+  {
+    $command = "cd $path && svn up";
+    $output  = SvnPeer::runCmd($command);
+    $output  = implode('<br>', $output);
+ 
+    preg_match_all("/[0-9]+/", $output, $ret);
+    if (!$ret[0][0]){
+      return "<br>" . $command . "<br>" . $output;
+    }
+ 
+    return $ret[0][0];
+  }
+ 
+ /**
+  * Run a cmd and return result
+  *
+  * @param string command line
+  * @param boolen true need add the svn authentication
+  * @return array the contents of the output that svn execute
+  */
+  static protected function runCmd($command)
+  {
+    putenv('LANG=C.UTF-8');
+    $authCommand = ' --username ' . self::SVN_USERNAME . ' --password ' . self::SVN_PASSWORD . ' --no-auth-cache --non-interactive --config-dir '.self::SVN_CONFIG_DIR.'.subversion';
+    exec($command . $authCommand . " 2>&1", $output, $status);
+ 
+    return $output;
+  }
 }
+
